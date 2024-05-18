@@ -1,11 +1,19 @@
 import scala.swing._
 import scala.swing.event._
+import java.awt.event.ActionEvent
+import javax.swing.{Timer => SwingTimer}
 
-class UI(width: Int, height: Int, numMines: Int) extends GridPanel(height, width) {
+class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
+  val timeLabel = new Label("Time: 0")
+  val scoreLabel = new Label("Score: 0")
   val board = new Board(width, height, numMines)
+  val buttonSize = new Dimension(40, 40)
+
   val buttons = Array.tabulate(height, width) { (row, col) =>
     new Button {
-      preferredSize = new Dimension(40, 40)
+      preferredSize = buttonSize
+      maximumSize = buttonSize
+      minimumSize = buttonSize
       listenTo(mouse.clicks)
       reactions += {
         case e: MouseClicked =>
@@ -21,11 +29,34 @@ class UI(width: Int, height: Int, numMines: Int) extends GridPanel(height, width
     }
   }
 
-  contents ++= buttons.flatten.toSeq
+  val gridPanel = new GridPanel(height, width) {
+    contents ++= buttons.flatten.toSeq
+    preferredSize = new Dimension(width * buttonSize.width, height * buttonSize.height)
+  }
 
+  val statusPanel = new BoxPanel(Orientation.Horizontal) {
+    contents += timeLabel
+    contents += Swing.HGlue
+    contents += scoreLabel
+    border = Swing.EmptyBorder(10, 10, 10, 10)
+  }
+
+  layout(statusPanel) = BorderPanel.Position.North
+  layout(gridPanel) = BorderPanel.Position.Center
+
+  val timer = new SwingTimer(1000, (_: ActionEvent) => updateTime())
+  timer.start()
+
+  def updateTime(): Unit = {
+    timeLabel.text = s"Time: ${board.getElapsedTime}"
+    if (board.isGameOver || board.isGameWon) {
+      timer.stop()
+    }
+  }
   def updateUI(): Unit = {
     for (r <- 0 until height; c <- 0 until width) {
       val cell = board.getGrid(r)(c)
+
       buttons(r)(c).text = if (cell.getRevealed) {
         if (cell.isMine) "#" else cell.getAdjacentMines.toString
       } else if (cell.getMark) {
@@ -33,7 +64,12 @@ class UI(width: Int, height: Int, numMines: Int) extends GridPanel(height, width
       } else {
         ""
       }
+
+      println(buttons(r)(c).text)
     }
+    timeLabel.text = s"Time: ${board.getElapsedTime}"
+    val score = board.calculateScore()
+    scoreLabel.text = f"Score: $score%.2f"
   }
 
   def checkGameOver(): Unit = {

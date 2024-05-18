@@ -1,15 +1,23 @@
 import scala.annotation.tailrec
 import scala.util.Random
+import java.util.Timer
+import java.util.TimerTask
 
 class Board(val width: Int, val height: Int, val numMines: Int) {
   private var gameOver: Boolean = false
   private var gameWon: Boolean = false
   private val grid = Array.tabulate(height, width)((_, _) => new Cell(isMine = false))
+  private var startTime: Long = 0
+  private var elapsedTime: Long = 0
+  private var clickCount: Int = 0
+  private val timer = new Timer()
 
   def isGameOver: Boolean = gameOver
   def isGameWon: Boolean = gameWon
 
   def getGrid: Array[Array[Cell]] = grid;
+  def getElapsedTime: Long = elapsedTime
+  def getClickCount: Int = clickCount
 
   init()
 
@@ -26,7 +34,7 @@ class Board(val width: Int, val height: Int, val numMines: Int) {
   private def init(): Unit = {
     placeMines()
     calculateAdjacentMines()
-//    printBoardDebug()
+    printBoardDebug()
   }
 
   private def placeMines(): Unit = {
@@ -80,7 +88,9 @@ class Board(val width: Int, val height: Int, val numMines: Int) {
     require(row >= 0 && row < height && col >= 0 && col < width, "Invalid cell coordinates")
 
     val cell = grid(row)(col)
+    if (startTime == 0) startGameTimer()
     if(!cell.getRevealed && !cell.getMark){
+      clickCount += 1
       if(cell.isMine){
         cell.reveal()
         gameOver = true
@@ -138,6 +148,20 @@ class Board(val width: Int, val height: Int, val numMines: Int) {
     if(unrevealedNonMineCells == 0) {
       gameWon = true
       gameOver = true
+      timer.cancel()
     }
+  }
+
+  def startGameTimer(): Unit = {
+    startTime = System.currentTimeMillis()
+    timer.scheduleAtFixedRate(new TimerTask {
+      def run(): Unit = {
+        elapsedTime = (System.currentTimeMillis() - startTime) / 1000
+      }
+    }, 1000, 1000)
+  }
+
+  def calculateScore(): Double = {
+    if (elapsedTime == 0 && clickCount == 0) 0 else 10000.0 / (elapsedTime / clickCount + clickCount)
   }
 }
