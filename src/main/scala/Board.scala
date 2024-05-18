@@ -2,6 +2,10 @@ import scala.annotation.tailrec
 import scala.util.Random
 import java.util.Timer
 import java.util.TimerTask
+import scala.io.Source
+import java.io.{File, PrintWriter}
+import java.time.LocalDateTime
+import java.time.format.DateTimeFormatter
 
 class Board(val width: Int, val height: Int, val numMines: Int) {
   private var gameOver: Boolean = false
@@ -11,6 +15,7 @@ class Board(val width: Int, val height: Int, val numMines: Int) {
   private var elapsedTime: Long = 0
   private var clickCount: Int = 0
   private val timer = new Timer()
+  private val scoreFile = new File("./temp/scores.txt")
 
   def isGameOver: Boolean = gameOver
   def isGameWon: Boolean = gameWon
@@ -97,11 +102,11 @@ class Board(val width: Int, val height: Int, val numMines: Int) {
         revealAllMines()
       }
       else {
-        checkWinCondition()
         if (cell.getAdjacentMines == 0) {
           revealAdjacentCells(row, col)
         }
         cell.reveal()
+        checkWinCondition()
       }
     }
   }
@@ -149,6 +154,7 @@ class Board(val width: Int, val height: Int, val numMines: Int) {
       gameWon = true
       gameOver = true
       timer.cancel()
+      saveScore(calculateScore())
     }
   }
 
@@ -163,5 +169,34 @@ class Board(val width: Int, val height: Int, val numMines: Int) {
 
   def calculateScore(): Double = {
     if (elapsedTime == 0 && clickCount == 0) 0 else 10000.0 / (elapsedTime / clickCount + clickCount)
+  }
+
+  private def saveScore(score: Double): Unit = {
+    val entry = ScoreEntry(LocalDateTime.now(), score)
+    val scores = loadScores() :+ entry // append to end of List
+    val sortedScores = scores.sortBy(- _.score) // sort by descending score
+    val writer = new PrintWriter(scoreFile)
+    try {
+      sortedScores.foreach { scoreEntry =>
+        writer.println(scoreEntry)
+      }
+    } finally {
+      writer.close()
+    }
+  }
+
+  def loadScores(): List[ScoreEntry] = {
+    if (!scoreFile.exists()) return Nil
+    val source = Source.fromFile(scoreFile)
+    try {
+      source.getLines().map { line =>
+        val Array(dateTimeStr, scoreStr) = line.split(" - ")
+        val dateTime = LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ofPattern("yyyy-dd-MM HH:mm:ss"))
+        val score = scoreStr.toDouble
+        ScoreEntry(dateTime, score)
+      }.toList
+    } finally {
+      source.close()
+    }
   }
 }

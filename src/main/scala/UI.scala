@@ -8,6 +8,7 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
   val scoreLabel = new Label("Score: 0")
   val board = new Board(width, height, numMines)
   val buttonSize = new Dimension(40, 40)
+  val showScoresButton = new Button("Scores")
 
   val buttons = Array.tabulate(height, width) { (row, col) =>
     new Button {
@@ -37,6 +38,8 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
   val statusPanel = new BoxPanel(Orientation.Horizontal) {
     contents += timeLabel
     contents += Swing.HGlue
+    contents += showScoresButton
+    contents += Swing.HGlue
     contents += scoreLabel
     border = Swing.EmptyBorder(10, 10, 10, 10)
   }
@@ -46,6 +49,12 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
 
   val timer = new SwingTimer(1000, (_: ActionEvent) => updateTime())
   timer.start()
+
+  listenTo(showScoresButton)
+  reactions += {
+    case ButtonClicked(`showScoresButton`) =>
+      showHighScores()
+  }
 
   def updateTime(): Unit = {
     timeLabel.text = s"Time: ${board.getElapsedTime}"
@@ -64,8 +73,6 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
       } else {
         ""
       }
-
-      println(buttons(r)(c).text)
     }
     timeLabel.text = s"Time: ${board.getElapsedTime}"
     val score = board.calculateScore()
@@ -78,5 +85,11 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
     } else if (board.isGameOver) {
       Dialog.showMessage(contents.head, "Game Over! You hit a mine!", title="Game Over")
     }
+  }
+
+  def showHighScores(): Unit = {
+    val scores = board.loadScores()
+    val message = if (scores.isEmpty) "No scores available." else scores.mkString("\n")
+    Dialog.showMessage(contents.head, message, title = "High Scores")
   }
 }
