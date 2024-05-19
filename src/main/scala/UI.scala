@@ -1,16 +1,20 @@
 import scala.swing._
 import scala.swing.event._
 import java.awt.event.ActionEvent
+import java.io.File
 import javax.swing.{Timer => SwingTimer}
 
-class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
-  val timeLabel = new Label("Time: 0")
-  val scoreLabel = new Label("Score: 0")
-  val board = new Board(width, height, numMines)
+class UI(width: Int, height: Int, numMines: Int, difficulty: String) extends BorderPanel {
+  private val timeLabel = new Label("Time: 0")
+  private val scoreLabel = new Label("Score: 0")
+  private var board = new Board(width, height, numMines, difficulty)
   val buttonSize = new Dimension(40, 40)
-  val showScoresButton = new Button("Scores")
+  private val showScoresButton = new Button("Scores")
+  private val recommendMoveButton = new Button("Recommend move")
+  private val saveLevelButton = new Button("Save level")
+  private val loadMovesButton = new Button("Load moves")
 
-  val buttons = Array.tabulate(height, width) { (row, col) =>
+  private val buttons = Array.tabulate(height, width) { (row, col) =>
     new Button {
       preferredSize = buttonSize
       maximumSize = buttonSize
@@ -30,15 +34,21 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
     }
   }
 
-  val gridPanel = new GridPanel(height, width) {
+  private val gridPanel = new GridPanel(height, width) {
     contents ++= buttons.flatten.toSeq
     preferredSize = new Dimension(width * buttonSize.width, height * buttonSize.height)
   }
 
-  val statusPanel = new BoxPanel(Orientation.Horizontal) {
+  private val statusPanel = new BoxPanel(Orientation.Horizontal) {
     contents += timeLabel
     contents += Swing.HGlue
+    contents += recommendMoveButton
+    contents += Swing.HGlue
     contents += showScoresButton
+    contents += Swing.HGlue
+    contents += loadMovesButton
+    contents += Swing.HGlue
+    contents += saveLevelButton
     contents += Swing.HGlue
     contents += scoreLabel
     border = Swing.EmptyBorder(10, 10, 10, 10)
@@ -56,6 +66,42 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
       showHighScores()
   }
 
+  listenTo(loadMovesButton)
+  reactions += {
+    case ButtonClicked(loadMovesButton) =>
+      val chooser = new FileChooser(new File("./temp/moves"))
+      chooser.title = "Choose a moves file"
+      val result = chooser.showOpenDialog(contents.head)
+      if (result == FileChooser.Result.Approve) {
+        val file = chooser.selectedFile
+        board.playTurnsFromFile(file.getPath)
+        updateUI()
+      }
+  }
+
+  listenTo(recommendMoveButton)
+  reactions += {
+    case ButtonClicked(`recommendMoveButton`) =>
+      board.recommendMove() match {
+        case Some((row, col)) => {
+          println(s"Recommended move: ($row, $col)")
+          updateUI()
+          checkGameOver()
+        }
+        case None => println("No safe moves left!")
+      }
+  }
+
+  listenTo(saveLevelButton)
+  reactions += {
+    case ButtonClicked(`saveLevelButton`) =>
+      board.saveLevel()
+  }
+
+  def setBoard(newBoard: Board): Unit = {
+    board = newBoard
+    updateUI()
+  }
   def updateTime(): Unit = {
     timeLabel.text = s"Time: ${board.getElapsedTime}"
     if (board.isGameOver || board.isGameWon) {
@@ -79,7 +125,7 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
     scoreLabel.text = f"Score: $score%.2f"
   }
 
-  def checkGameOver(): Unit = {
+  private def checkGameOver(): Unit = {
     if (board.isGameWon) {
       Dialog.showMessage(contents.head, "Congratulations! You won!", title="Victory")
     } else if (board.isGameOver) {
@@ -87,7 +133,7 @@ class UI(width: Int, height: Int, numMines: Int) extends BorderPanel {
     }
   }
 
-  def showHighScores(): Unit = {
+  private def showHighScores(): Unit = {
     val scores = board.loadScores()
     val message = if (scores.isEmpty) "No scores available." else scores.mkString("\n")
     Dialog.showMessage(contents.head, message, title = "High Scores")

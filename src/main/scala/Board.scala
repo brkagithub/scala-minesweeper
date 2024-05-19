@@ -7,7 +7,7 @@ import java.io.{File, PrintWriter}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class Board(val width: Int, val height: Int, val numMines: Int) {
+class Board(val width: Int, val height: Int, val numMines: Int, difficulty: String) {
   private var gameOver: Boolean = false
   private var gameWon: Boolean = false
   private val grid = Array.tabulate(height, width)((_, _) => new Cell(isMine = false))
@@ -190,13 +190,122 @@ class Board(val width: Int, val height: Int, val numMines: Int) {
     val source = Source.fromFile(scoreFile)
     try {
       source.getLines().map { line =>
-        val Array(dateTimeStr, scoreStr) = line.split(" - ")
+        val Array(dateTimeStr, scoreStr) = line.split(": ")
         val dateTime = LocalDateTime.parse(dateTimeStr, DateTimeFormatter.ofPattern("yyyy-dd-MM HH:mm:ss"))
         val score = scoreStr.toDouble
         ScoreEntry(dateTime, score)
       }.toList
     } finally {
       source.close()
+    }
+  }
+
+  def recommendMove(): Option[(Int, Int)] = {
+    for {
+      i <- 0 until height
+      j <- 0 until width
+      if !grid(i)(j).isMine && !grid(i)(j).getRevealed
+    } {
+      clickCount += 10
+      revealCell(i, j)
+      return Some((i, j))
+    }
+    None
+  }
+
+  def saveLevel(): Unit = {
+    val now = LocalDateTime.now()
+    val formatter = DateTimeFormatter.ofPattern("yyyy-dd-MM-HH-mm-ss")
+    val filename = s"./temp/${difficulty}/${now.format(formatter)}.txt"
+
+    val dir = new File(s"./temp/$difficulty")
+    if (!dir.exists()) {
+      dir.mkdirs()
+    }
+
+    val writer = new PrintWriter(filename)
+    try {
+      writer.println(s"Width: $width")
+      writer.println(s"Height: $height")
+      writer.println(s"NumMines: $numMines")
+      writer.println(s"ElapsedTime: $elapsedTime")
+      writer.println(s"ClickCount: $clickCount")
+
+      for (i <- 0 until height) {
+        for (j <- 0 until width) {
+          val cell = grid(i)(j)
+          val cellState = if (cell.isMine) "*" else cell.getAdjacentMines.toString
+          val revealed = if (cell.getRevealed) "R" else "U"
+          val marked = if (cell.getMark) "M" else "N"
+          writer.print(s"$cellState$revealed$marked ")
+        }
+        writer.println()
+      }
+    } finally {
+      writer.close()
+    }
+  }
+
+  def loadLevel(filename: String): Unit = {
+    val source = Source.fromFile(filename)
+    try {
+      val lines = source.getLines().toArray
+
+      val width = lines(0).split(": ")(1).toInt
+      val height = lines(1).split(": ")(1).toInt
+      val numMines = lines(2).split(": ")(1).toInt
+      elapsedTime = lines(3).split(": ")(1).toLong
+      clickCount = lines(4).split(": ")(1).toInt
+
+      val newGrid = Array.tabulate(height, width)((_, _) => new Cell(isMine = false))
+
+      for (i <- 0 until height) {
+        val cells = lines(i + 5).trim.split(" ")
+        for (j <- 0 until width) {
+          val cellStr = cells(j)
+          val isMine = cellStr(0) == '*'
+          val adjacentMines = if (isMine) 0 else cellStr(0).asDigit
+          val revealed = cellStr(1) == 'R'
+          val marked = cellStr(2) == 'M'
+
+          val cell = new Cell(isMine)
+          cell.setAdjacentMines(adjacentMines)
+          if (revealed) cell.reveal()
+          if (marked) cell.toggleMark()
+
+          newGrid(i)(j) = cell
+        }
+      }
+
+      for (i <- 0 until height) {
+        for (j <- 0 until width) {
+          grid(i)(j) = newGrid(i)(j)
+        }
+      }
+    }
+  }
+
+  def playTurnsFromFile(filename: String): Unit = {
+    val source = Source.fromFile(filename)
+    try {
+      for(line <- source.getLines()){
+        val turn = line.trim
+        if(turn.nonEmpty){
+          val action = turn.charAt(0)
+          val coordinates = turn.substring(2, turn.length - 1).split(",")
+          if(coordinates.length == 2){
+            val x = coordinates(0).toInt
+            val y = coordinates(1).toInt
+            if(x >= 0 && x < height && y >=0 && y < width){
+              action match {
+                case 'L' => revealCell(x, y)
+                case 'D' => grid(x)(y).toggleMark()
+                case _ =>
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

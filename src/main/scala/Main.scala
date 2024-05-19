@@ -1,5 +1,7 @@
+import java.io.File
 import scala.swing._
 import scala.swing.event._
+import scala.util.Random
 
 object Main extends SimpleSwingApplication {
   def top: Frame = new MainFrame {
@@ -49,17 +51,93 @@ object Main extends SimpleSwingApplication {
 
     reactions += {
       case ButtonClicked(`beginnerButton`) =>
-        startGame(8, 8, 10)
+        showGameOptions(8, 8, 10, "Beginner")
       case ButtonClicked(`intermediateButton`) =>
-        startGame(16, 16, 40)
+        showGameOptions(16, 16, 40, "Intermediate")
       case ButtonClicked(`expertButton`) =>
-        startGame(30, 16, 99)
+        showGameOptions(30, 16, 99, "Expert")
     }
 
-    def startGame(width: Int, height: Int, numMines: Int): Unit = {
+    private def showGameOptions(width: Int, height: Int, numMines: Int, difficulty: String): Unit = {
+      val options = Seq("Start game", "Load level", "Random level")
+      val dialog = new Dialog {
+        title = "Game Options"
+        modal = true
+        val optionList = new ListView(options)
+        optionList.selection.intervalMode = ListView.IntervalMode.Single
+        contents = new BoxPanel(Orientation.Vertical) {
+          contents += new ScrollPane(optionList)
+          contents += Button("Select") {
+            close()
+          }
+          border = Swing.EmptyBorder(10, 10, 10, 10)
+        }
+        centerOnScreen()
+        open()
+        optionList.selection.indices.headOption
+      }
+
+      dialog.optionList.selection.indices.headOption match {
+        case Some(0) => startGame(width, height, numMines, difficulty)
+        case Some(1) => loadGame(width, height, numMines, difficulty)
+        case Some(2) => startRandomLevel(width, height, numMines, difficulty)
+        case _ => println("No option selected")
+      }
+    }
+
+    private def startRandomLevel(width: Int, height: Int, numMines: Int, difficulty: String): Unit = {
+      val dir = new File(s"./temp/$difficulty")
+      if (dir.exists && dir.isDirectory) {
+        val files = dir.listFiles.filter(_.isFile).toList
+        if (files.nonEmpty) {
+          val randomFile = files(Random.nextInt(files.length))
+          val savedBoard = new Board(width, height, numMines, difficulty)
+          savedBoard.loadLevel(randomFile.getPath)
+
+          val mainFrame = new MainFrame {
+            title = "Scala Minesweeper"
+            val ui = new UI(width, height, numMines, difficulty)
+            ui.setBoard(savedBoard)
+            contents = ui
+            size = new Dimension(1600, 800)
+            centerOnScreen()
+            visible = true
+          }
+          mainFrame.visible = true
+          this.visible = false
+        } else {
+          println(s"No level files found in ./temp/$difficulty")
+        }
+      } else {
+        println(s"Directory ./temp/$difficulty does not exist")
+      }
+    }
+    private def loadGame(width: Int, height: Int, numMines: Int, difficulty: String): Unit = {
+      val chooser = new FileChooser(new File(s"./temp/${difficulty}"))
+      chooser.title = "Choose a Level File"
+      val result = chooser.showOpenDialog(contents.head)
+      if (result == FileChooser.Result.Approve) {
+        val file = chooser.selectedFile
+        val savedBoard = new Board(width, height, numMines, difficulty)
+        savedBoard.loadLevel(file.getPath)
+
+        val mainFrame = new MainFrame {
+          title = "Scala Minesweeper"
+          val ui = new UI(width, height, numMines, difficulty)
+          ui.setBoard(savedBoard)
+          contents = ui
+          size = new Dimension(1600, 800)
+          centerOnScreen()
+          visible = true
+        }
+        mainFrame.visible = true
+        this.visible = false
+      }
+    }
+    private def startGame(width: Int, height: Int, numMines: Int, difficulty: String): Unit = {
       val mainFrame = new MainFrame {
         title = "Scala Minesweeper"
-        contents = new UI(width, height, numMines)
+        contents = new UI(width, height, numMines, difficulty)
         size = new Dimension(1600, 800)
         centerOnScreen()
         visible = true

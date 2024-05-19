@@ -1,3 +1,7 @@
+//import io.circe.generic.auto._
+//import io.circe.syntax._
+//import io.circe.parser._
+
 class Cell(val isMine: Boolean) {
   private var revealed: Boolean = false
   private var mark: Boolean = false
