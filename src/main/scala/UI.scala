@@ -13,28 +13,12 @@ class UI(width: Int, height: Int, numMines: Int, difficulty: String) extends Bor
   private val recommendMoveButton = new Button("Recommend move")
   private val saveLevelButton = new Button("Save level")
   private val loadMovesButton = new Button("Load moves")
+  private var topLeftToClear: Option[(Int, Int)] = None
+  private var bottomRightToClear: Option[(Int, Int)] = None
 
-  private val buttons = Array.tabulate(height, width) { (row, col) =>
-    new Button {
-      preferredSize = buttonSize
-      maximumSize = buttonSize
-      minimumSize = buttonSize
-      listenTo(mouse.clicks)
-      reactions += {
-        case e: MouseClicked =>
-          if (e.peer.getButton == java.awt.event.MouseEvent.BUTTON1 && !board.isGameOver && !board.isGameWon) {
-            board.revealCell(row, col)
-            updateUI()
-            checkGameOver()
-          } else if (e.peer.getButton == java.awt.event.MouseEvent.BUTTON3 && !board.isGameOver && !board.isGameWon) {
-            board.getGrid(row)(col).toggleMark()
-            updateUI()
-          }
-      }
-    }
-  }
+  private var buttons = createButtons()
 
-  private val gridPanel = new GridPanel(height, width) {
+  private var gridPanel = new GridPanel(height, width) {
     contents ++= buttons.flatten.toSeq
     preferredSize = new Dimension(width * buttonSize.width, height * buttonSize.height)
   }
@@ -68,7 +52,7 @@ class UI(width: Int, height: Int, numMines: Int, difficulty: String) extends Bor
 
   listenTo(loadMovesButton)
   reactions += {
-    case ButtonClicked(loadMovesButton) =>
+    case ButtonClicked(`loadMovesButton`) =>
       val chooser = new FileChooser(new File("./temp/moves"))
       chooser.title = "Choose a moves file"
       val result = chooser.showOpenDialog(contents.head)
@@ -98,8 +82,72 @@ class UI(width: Int, height: Int, numMines: Int, difficulty: String) extends Bor
       board.saveLevel()
   }
 
+  updateUI()
+
+  def createButtons(): Array[Array[Button]] = {
+    Array.tabulate(board.height, board.width) { (row, col) =>
+      new Button {
+        preferredSize = buttonSize
+        maximumSize = buttonSize
+        minimumSize = buttonSize
+        listenTo(mouse.clicks)
+        reactions += {
+          case e: MouseClicked =>
+            if (board.isInteractive) {
+              if (e.peer.getButton == java.awt.event.MouseEvent.BUTTON1 && !board.isGameOver && !board.isGameWon) {
+                board.revealCell(row, col)
+                updateUI()
+                checkGameOver()
+              } else if (e.peer.getButton == java.awt.event.MouseEvent.BUTTON3 && !board.isGameOver && !board.isGameWon) {
+                board.getGrid(row)(col).toggleMark()
+                updateUI()
+              }
+            } else {
+              if (e.peer.getButton == java.awt.event.MouseEvent.BUTTON1) {
+                board.getGrid(row)(col).toggleIsMine()
+                board.calculateAdjacentMines()
+                updateUI()
+              }
+              else if (e.peer.getButton == java.awt.event.MouseEvent.BUTTON3) {
+                if (topLeftToClear.isEmpty) {
+                  topLeftToClear = Some((row, col))
+                  println(s"Top left to clear ($row, $col)")
+                } else if (bottomRightToClear.isEmpty) {
+                  bottomRightToClear = Some((row, col))
+                  println(s"Bottom right to clear at ($row, $col)")
+                  clearRectangle()
+                }
+                updateUI()
+              }
+            }
+        }
+      }
+    }
+  }
+
+  def recreateButtons(): Unit = {
+    buttons = createButtons()
+    gridPanel.preferredSize = new Dimension(board.width * buttonSize.width, board.height * buttonSize.height)
+
+    gridPanel.contents.clear()
+    gridPanel = new GridPanel(board.height, board.width) {
+      contents ++= buttons.flatten.toSeq
+      preferredSize = new Dimension(board.width * buttonSize.width, board.height * buttonSize.height)
+    }
+    layout(gridPanel) = BorderPanel.Position.Center
+    revalidate()
+    repaint()
+  }
+
   def setBoard(newBoard: Board): Unit = {
     board = newBoard
+    if (!board.isInteractive) {
+      statusPanel.contents.clear()
+      statusPanel.contents += saveLevelButton
+      statusPanel.contents += Swing.HGlue
+    }
+
+    recreateButtons()
     updateUI()
   }
   def updateTime(): Unit = {
@@ -109,10 +157,10 @@ class UI(width: Int, height: Int, numMines: Int, difficulty: String) extends Bor
     }
   }
   def updateUI(): Unit = {
-    for (r <- 0 until height; c <- 0 until width) {
+    for (r <- 0 until board.height; c <- 0 until board.width) {
       val cell = board.getGrid(r)(c)
 
-      buttons(r)(c).text = if (cell.getRevealed) {
+      buttons(r)(c).text = if (cell.getRevealed || !board.isInteractive) {
         if (cell.isMine) "#" else cell.getAdjacentMines.toString
       } else if (cell.getMark) {
         "F"
@@ -125,6 +173,20 @@ class UI(width: Int, height: Int, numMines: Int, difficulty: String) extends Bor
     scoreLabel.text = f"Score: $score%.2f"
   }
 
+  private def clearRectangle(): Unit = {
+    if (topLeftToClear.isDefined && bottomRightToClear.isDefined) {
+      val (tlRow, tlCol) = topLeftToClear.get
+      val (brRow, brCol) = bottomRightToClear.get
+
+      for (r <- tlRow to brRow; c <- tlCol to brCol) {
+        board.getGrid(r)(c).isMine = false
+      }
+      board.calculateAdjacentMines()
+      topLeftToClear = None
+      bottomRightToClear = None
+      updateUI()
+    }
+  }
   private def checkGameOver(): Unit = {
     if (board.isGameWon) {
       Dialog.showMessage(contents.head, "Congratulations! You won!", title="Victory")

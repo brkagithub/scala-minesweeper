@@ -59,7 +59,7 @@ object Main extends SimpleSwingApplication {
     }
 
     private def showGameOptions(width: Int, height: Int, numMines: Int, difficulty: String): Unit = {
-      val options = Seq("Start game", "Load level", "Random level")
+      val options = Seq("Start game", "Load level", "Random level", "Level builder")
       val dialog = new Dialog {
         title = "Game Options"
         modal = true
@@ -81,6 +81,7 @@ object Main extends SimpleSwingApplication {
         case Some(0) => startGame(width, height, numMines, difficulty)
         case Some(1) => loadGame(width, height, numMines, difficulty)
         case Some(2) => startRandomLevel(width, height, numMines, difficulty)
+        case Some(3) => openLevelBuilder(width, height, numMines, difficulty)
         case _ => println("No option selected")
       }
     }
@@ -144,6 +145,34 @@ object Main extends SimpleSwingApplication {
       }
       mainFrame.visible = true
       this.visible = false
+    }
+
+    private def openLevelBuilder(width: Int, height: Int, numMines: Int, difficulty: String): Unit = {
+      val chooser = new FileChooser(new File(s"./temp/${difficulty}"))
+      chooser.title = "Choose level file to edit"
+      val result = chooser.showOpenDialog(contents.head)
+      if(result == FileChooser.Result.Approve){
+        val file = chooser.selectedFile
+        val savedBoard = new Board(width, height, numMines, difficulty, false)
+        savedBoard.loadLevel(file.getPath)
+
+        val mainFrame = new MainFrame{
+          title = "Level builder"
+          val ui = new UI(width, height, numMines, difficulty) {
+            setBoard(savedBoard)
+          }
+          val levelBuilder = new LevelBuilder(savedBoard, difficulty, file.getPath, ui)
+          contents = new BorderPanel {
+            layout(levelBuilder) = BorderPanel.Position.North
+            layout(ui) = BorderPanel.Position.Center
+          }
+          size = new Dimension(1600, 800)
+          centerOnScreen()
+          visible = true
+        }
+        mainFrame.visible = true
+        this.visible = false
+      }
     }
   }
 }

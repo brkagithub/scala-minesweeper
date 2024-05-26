@@ -7,10 +7,10 @@ import java.io.{File, PrintWriter}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class Board(val width: Int, val height: Int, val numMines: Int, difficulty: String) {
+class Board(var width: Int, var height: Int, val numMines: Int, difficulty: String, var isInteractive: Boolean = true) {
   private var gameOver: Boolean = false
   private var gameWon: Boolean = false
-  private val grid = Array.tabulate(height, width)((_, _) => new Cell(isMine = false))
+  private var grid = Array.tabulate(height, width)((_, _) => new Cell(isMine = false))
   private var startTime: Long = 0
   private var elapsedTime: Long = 0
   private var clickCount: Int = 0
@@ -21,6 +21,10 @@ class Board(val width: Int, val height: Int, val numMines: Int, difficulty: Stri
   def isGameWon: Boolean = gameWon
 
   def getGrid: Array[Array[Cell]] = grid;
+
+  def setGrid(newGrid: Array[Array[Cell]]): Unit = {
+    grid = newGrid
+  }
   def getElapsedTime: Long = elapsedTime
   def getClickCount: Int = clickCount
 
@@ -62,7 +66,7 @@ class Board(val width: Int, val height: Int, val numMines: Int, difficulty: Stri
     placeMinesRec(0)
   }
 
-  private def calculateAdjacentMines(): Unit = {
+  def calculateAdjacentMines(): Unit = {
     for {
       i <- 0 until height
       j <- 0 until width
@@ -91,6 +95,7 @@ class Board(val width: Int, val height: Int, val numMines: Int, difficulty: Stri
   def revealCell(row: Int, col: Int): Unit = {
     require(!gameOver, "Game is already over")
     require(row >= 0 && row < height && col >= 0 && col < width, "Invalid cell coordinates")
+    if (!isInteractive) return
 
     val cell = grid(row)(col)
     if (startTime == 0) startGameTimer()
@@ -113,6 +118,12 @@ class Board(val width: Int, val height: Int, val numMines: Int, difficulty: Stri
 
   private def revealAllMines(): Unit = {
     for (row <- grid; cell <- row if cell.isMine) {
+      cell.reveal()
+    }
+  }
+
+  private def revealAllCells(): Unit = {
+    for (row <- grid; cell <- row) {
       cell.reveal()
     }
   }
@@ -213,10 +224,14 @@ class Board(val width: Int, val height: Int, val numMines: Int, difficulty: Stri
     None
   }
 
-  def saveLevel(): Unit = {
-    val now = LocalDateTime.now()
-    val formatter = DateTimeFormatter.ofPattern("yyyy-dd-MM-HH-mm-ss")
-    val filename = s"./temp/${difficulty}/${now.format(formatter)}.txt"
+  def saveLevel(filenamePassed: String = ""): Unit = {
+    val filename = if (filenamePassed.isEmpty) {
+      val now = LocalDateTime.now()
+      val formatter = DateTimeFormatter.ofPattern("yyyy-dd-MM-HH-mm-ss")
+      s"./temp/${difficulty}/${now.format(formatter)}.txt"
+    } else {
+      filenamePassed
+    }
 
     val dir = new File(s"./temp/$difficulty")
     if (!dir.exists()) {
@@ -251,8 +266,8 @@ class Board(val width: Int, val height: Int, val numMines: Int, difficulty: Stri
     try {
       val lines = source.getLines().toArray
 
-      val width = lines(0).split(": ")(1).toInt
-      val height = lines(1).split(": ")(1).toInt
+      width = lines(0).split(": ")(1).toInt
+      height = lines(1).split(": ")(1).toInt
       val numMines = lines(2).split(": ")(1).toInt
       elapsedTime = lines(3).split(": ")(1).toLong
       clickCount = lines(4).split(": ")(1).toInt
@@ -276,12 +291,7 @@ class Board(val width: Int, val height: Int, val numMines: Int, difficulty: Stri
           newGrid(i)(j) = cell
         }
       }
-
-      for (i <- 0 until height) {
-        for (j <- 0 until width) {
-          grid(i)(j) = newGrid(i)(j)
-        }
-      }
+      setGrid(newGrid)
     }
   }
 
