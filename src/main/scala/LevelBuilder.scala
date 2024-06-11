@@ -2,7 +2,7 @@ import scala.swing._
 import scala.swing.event._
 import java.io.File
 
-class LevelBuilder(board: Board, difficulty: String, filepath: String, ui: UI) extends BoxPanel(Orientation.Vertical) {
+class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: UI) extends BoxPanel(Orientation.Vertical) {
   private val addFirstRowButton = new Button("Add first row")
   private val addLastRowButton = new Button("Add last row")
   private val addFirstColumnButton = new Button("Add first column")
@@ -12,6 +12,7 @@ class LevelBuilder(board: Board, difficulty: String, filepath: String, ui: UI) e
   private val removeLastRowButton = new Button("Remove last row")
   private val removeFirstColumnButton = new Button("Remove first column")
   private val removeLastColumnButton = new Button("Remove last column")
+  private val rotationButton = new Button("Rotation")
 
   private val (minRows, maxRows, minCols, maxCols) = difficulty match {
     case "Beginner" => (1, 10, 1, 10)
@@ -30,10 +31,11 @@ class LevelBuilder(board: Board, difficulty: String, filepath: String, ui: UI) e
     contents += removeFirstColumnButton
     contents += removeLastColumnButton
     contents += saveButton
+    contents += rotationButton
   }
 
   listenTo(addFirstRowButton, addLastRowButton, addFirstColumnButton, addLastColumnButton,
-    removeFirstRowButton, removeLastRowButton, removeFirstColumnButton, removeLastColumnButton, saveButton)
+    removeFirstRowButton, removeLastRowButton, removeFirstColumnButton, removeLastColumnButton, saveButton, rotationButton)
 
 
   reactions += {
@@ -46,6 +48,7 @@ class LevelBuilder(board: Board, difficulty: String, filepath: String, ui: UI) e
     case ButtonClicked(`removeFirstColumnButton`) => removeFirstColumn()
     case ButtonClicked(`removeLastColumnButton`) => removeLastColumn()
     case ButtonClicked(`saveButton`) => saveLevel()
+    case ButtonClicked(`rotationButton`) => rotation()
   }
 
   private def addFirstRow(): Unit = {
@@ -186,6 +189,19 @@ class LevelBuilder(board: Board, difficulty: String, filepath: String, ui: UI) e
   }
 
   private def saveLevel(): Unit = {
+    print(filepath)
     board.saveLevel(filepath)
+  }
+
+  private def rotation(): Unit = {
+    val rotation = new NonTransparent with NonExtendable with Rotation {
+      override def clockwise: Boolean = false
+    }
+
+    board = rotation.apply(board, 2, 3, new Area(board, 1, 0, 2, 4))
+
+    ui.setBoard(board)
+    ui.recreateButtons()
+    ui.updateUI()
   }
 }

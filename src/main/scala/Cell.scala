@@ -19,6 +19,10 @@ class Cell(var isMine: Boolean) {
     isMine = !isMine
   }
 
+  def setIsMine(value: Boolean): Unit = {
+    isMine = value
+  }
+
 
   def getRevealed: Boolean = revealed
   def getMark: Boolean = mark

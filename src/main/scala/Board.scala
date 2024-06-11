@@ -7,7 +7,7 @@ import java.io.{File, PrintWriter}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
-class Board(var width: Int, var height: Int, val numMines: Int, difficulty: String, var isInteractive: Boolean = true) {
+class Board(var width: Int, var height: Int, var numMines: Int, difficulty: String, var isInteractive: Boolean = true) {
   private var gameOver: Boolean = false
   private var gameWon: Boolean = false
   private var grid = Array.tabulate(height, width)((_, _) => new Cell(isMine = false))
@@ -17,6 +17,8 @@ class Board(var width: Int, var height: Int, val numMines: Int, difficulty: Stri
   private val timer = new Timer()
   private val scoreFile = new File("./temp/scores.txt")
 
+  def getWidth: Int = width
+  def getHeight: Int = height
   def isGameOver: Boolean = gameOver
   def isGameWon: Boolean = gameWon
 
@@ -66,6 +68,20 @@ class Board(var width: Int, var height: Int, val numMines: Int, difficulty: Stri
     placeMinesRec(0)
   }
 
+  def calculateActualNumberOfMines(): Unit = {
+    var actualNumMines = 0
+
+    for {
+      i <- 0 until height
+      j <- 0 until width
+    } {
+      if (grid(i)(j).isMine) {
+        actualNumMines += 1
+      }
+    }
+
+    numMines = actualNumMines
+  }
   def calculateAdjacentMines(): Unit = {
     for {
       i <- 0 until height
@@ -75,6 +91,8 @@ class Board(var width: Int, var height: Int, val numMines: Int, difficulty: Stri
       val adjacentMines = countAdjacentMines(i, j)
       grid(i)(j).setAdjacentMines(adjacentMines)
     }
+
+    calculateActualNumberOfMines()
   }
 
   private def countAdjacentMines(row: Int, col: Int): Int = {
@@ -317,5 +335,41 @@ class Board(var width: Int, var height: Int, val numMines: Int, difficulty: Stri
         }
       }
     }
+  }
+
+  def addFirstRow(): Unit = {
+    height += 1
+    val newGrid = Array.ofDim[Cell](height, width)
+    Array.copy(getGrid, 0, newGrid, 1, height - 1)
+    newGrid(0) = Array.fill(width)(new Cell(isMine = false))
+    setGrid(newGrid)
+  }
+
+  def addLastRow(): Unit = {
+    height += 1
+    val newGrid = Array.ofDim[Cell](height, width)
+    Array.copy(getGrid, 0, newGrid, 0, height - 1)
+    newGrid(height - 1) = Array.fill(width)(new Cell(isMine = false))
+    setGrid(newGrid)
+  }
+
+  def addFirstColumn(): Unit = {
+    width += 1
+    val newGrid = Array.ofDim[Cell](height, width)
+    for (y <- 0 until height) {
+      Array.copy(getGrid(y), 0, newGrid(y), 1, width - 1)
+      newGrid(y)(0) = new Cell(isMine = false)
+    }
+    setGrid(newGrid)
+  }
+
+  def addLastColumn(): Unit = {
+    width += 1
+    val newGrid = Array.ofDim[Cell](height, width)
+    for (y <- 0 until height) {
+      Array.copy(getGrid(y), 0, newGrid(y), 0, width - 1)
+      newGrid(y)(width - 1) = new Cell(isMine = false)
+    }
+    setGrid(newGrid)
   }
 }
