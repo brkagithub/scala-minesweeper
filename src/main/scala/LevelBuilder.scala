@@ -12,8 +12,34 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
   private val removeLastRowButton = new Button("Remove last row")
   private val removeFirstColumnButton = new Button("Remove first column")
   private val removeLastColumnButton = new Button("Remove last column")
-  private val rotationButton = new Button("Rotation")
-  private val symmetryButton = new Button("Symmetry")
+
+  private val applyButton = new Button("Apply")
+
+  private val operationTypeComboBox = new ComboBox(Seq("Rotation", "Symmetry"))
+  private val transparencyComboBox = new ComboBox(Seq("Transparent", "NonTransparent"))
+  private val extendabilityComboBox = new ComboBox(Seq("Extendable", "NonExtendable"))
+  private val rotationDirectionComboBox = new ComboBox(Seq("Clockwise", "CounterClockwise"))
+  private val symmetryDirectionComboBox = new ComboBox(Seq("h", "v", "d"))
+
+  private val centerXField = new TextField {
+    columns = 5
+  }
+  private val centerYField = new TextField {
+    columns = 5
+  }
+  private val topLeftXField = new TextField {
+    columns = 5
+  }
+  private val topLeftYField = new TextField {
+    columns = 5
+  }
+  private val bottomRightXField = new TextField {
+    columns = 5
+  }
+  private val bottomRightYField = new TextField {
+    columns = 5
+  }
+
 
   private val (minRows, maxRows, minCols, maxCols) = difficulty match {
     case "Beginner" => (1, 10, 1, 10)
@@ -32,13 +58,41 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     contents += removeFirstColumnButton
     contents += removeLastColumnButton
     contents += saveButton
-    contents += rotationButton
-    contents += symmetryButton
+  }
+
+  contents += new FlowPanel {
+    contents += new Label("Operation Type:")
+    contents += operationTypeComboBox
+    contents += new Label("Transparency:")
+    contents += transparencyComboBox
+    contents += new Label("Extendability:")
+    contents += extendabilityComboBox
+    contents += new Label("Rotation Direction:")
+    contents += rotationDirectionComboBox
+    contents += new Label("Symmetry Direction:")
+    contents += symmetryDirectionComboBox
+  }
+
+  contents += new FlowPanel {
+    contents += new Label("Center X:")
+    contents += centerXField
+    contents += new Label("Center Y:")
+    contents += centerYField
+    contents += new Label("Top Left X:")
+    contents += topLeftXField
+    contents += new Label("Top Left Y:")
+    contents += topLeftYField
+    contents += new Label("Bottom Right X:")
+    contents += bottomRightXField
+    contents += new Label("Bottom Right Y:")
+    contents += bottomRightYField
+    contents += applyButton
   }
 
   listenTo(addFirstRowButton, addLastRowButton, addFirstColumnButton, addLastColumnButton,
     removeFirstRowButton, removeLastRowButton, removeFirstColumnButton, removeLastColumnButton, saveButton,
-    rotationButton, symmetryButton)
+    applyButton, operationTypeComboBox.selection, transparencyComboBox.selection, extendabilityComboBox.selection,
+    rotationDirectionComboBox.selection, symmetryDirectionComboBox.selection)
 
 
   reactions += {
@@ -51,8 +105,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     case ButtonClicked(`removeFirstColumnButton`) => removeFirstColumn()
     case ButtonClicked(`removeLastColumnButton`) => removeLastColumn()
     case ButtonClicked(`saveButton`) => saveLevel()
-    case ButtonClicked(`rotationButton`) => rotation()
-    case ButtonClicked(`symmetryButton`) => symmetry()
+    case ButtonClicked(`applyButton`) => applyOperation()
   }
 
   private def addFirstRow(): Unit = {
@@ -145,7 +198,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
       Dialog.showMessage(contents.head, s"Cannot remove more rows. Minimum rows for $difficulty is $minRows.", title = "Sorry!")
       return
     }
-    require (board.height > 1)
+    require(board.height > 1)
     board.height -= 1
     val newGrid = Array.ofDim[Cell](board.height, board.width)
     Array.copy(board.getGrid, 0, newGrid, 0, board.height)
@@ -161,7 +214,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
       Dialog.showMessage(contents.head, s"Cannot remove more columns. Minimum columns for $difficulty is $minCols.", title = "Sorry!")
       return
     }
-    require (board.width > 1, "Can't remove")
+    require(board.width > 1, "Can't remove")
     board.width -= 1
     val newGrid = Array.ofDim[Cell](board.height, board.width)
     for (i <- 0 until board.height) {
@@ -179,7 +232,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
       Dialog.showMessage(contents.head, s"Cannot remove more columns. Minimum columns for $difficulty is $minCols.", title = "Sorry!")
       return
     }
-    require (board.width > 1, "Can't remove")
+    require(board.width > 1, "Can't remove")
     board.width -= 1
     val newGrid = Array.ofDim[Cell](board.height, board.width)
     for (i <- 0 until board.height) {
@@ -197,25 +250,73 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     board.saveLevel(filepath)
   }
 
-  private def rotation(): Unit = {
-    val rotation = new NonTransparent with NonExtendable with Rotation {
-      override def clockwise: Boolean = false
+  private def applyOperation(): Unit = {
+    val isTransparent = transparencyComboBox.selection.item == "Transparent"
+    val isExtendable = extendabilityComboBox.selection.item == "Extendable"
+    val operationType = operationTypeComboBox.selection.item
+    val rotationClockwise = rotationDirectionComboBox.selection.item == "Clockwise"
+    val symmetryDirection = symmetryDirectionComboBox.selection.item.head
+
+    val centerX = centerXField.text.toInt
+    val centerY = centerYField.text.toInt
+    val topLeftX = topLeftXField.text.toInt
+    val topLeftY = topLeftYField.text.toInt
+    val bottomRightX = bottomRightXField.text.toInt
+    val bottomRightY = bottomRightYField.text.toInt
+
+    if (operationType == "Rotation") {
+      if (isTransparent) {
+        if (isExtendable) {
+          val rotation = new Transparent with Extendable with Rotation {
+            override def clockwise: Boolean = rotationClockwise
+          }
+          board = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+        } else {
+          val rotation = new Transparent with NonExtendable with Rotation {
+            override def clockwise: Boolean = rotationClockwise
+          }
+          board = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+        }
+      } else {
+        if (isExtendable) {
+          val rotation = new NonTransparent with Extendable with Rotation {
+            override def clockwise: Boolean = rotationClockwise
+          }
+          board = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+        } else {
+          val rotation = new NonTransparent with NonExtendable with Rotation {
+            override def clockwise: Boolean = rotationClockwise
+          }
+          board = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+        }
+      }
+    } else if (operationType == "Symmetry") {
+      if (isTransparent) {
+        if (isExtendable) {
+          val symmetry = new Transparent with Extendable with Symmetry {
+            override def direction: Char = symmetryDirection
+          }
+          board = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+        } else {
+          val symmetry = new Transparent with NonExtendable with Symmetry {
+            override def direction: Char = symmetryDirection
+          }
+          board = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+        }
+      } else {
+        if (isExtendable) {
+          val symmetry = new NonTransparent with Extendable with Symmetry {
+            override def direction: Char = symmetryDirection
+          }
+          board = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+        } else {
+          val symmetry = new NonTransparent with NonExtendable with Symmetry {
+            override def direction: Char = symmetryDirection
+          }
+          board = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+        }
+      }
     }
-
-    board = rotation.apply(board, 2, 3, new Area(board, 1, 0, 2, 4))
-
-    ui.setBoard(board)
-    ui.recreateButtons()
-    ui.updateUI()
-  }
-
-  private def symmetry(): Unit = {
-    val symmetry = new Transparent with Extendable with Symmetry {
-      override def direction: Char = 'd'
-    }
-
-    board = symmetry.apply(board, 0, 3, new Area(board, 2, 3, 3, 4))
-
     ui.setBoard(board)
     ui.recreateButtons()
     ui.updateUI()

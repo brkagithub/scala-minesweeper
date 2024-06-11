@@ -23,10 +23,11 @@ trait Symmetry extends Isometry {
   }
 
   private def transformPoint(x: Int, y: Int, centerX: Int, centerY: Int, direction: Char): (Int, Int) = {
+    print((centerX + centerY - y, centerX + centerY - x))
     direction match {
       case 'h' => (2 * centerX - x, y)
       case 'v' => (x, 2 * centerY - y)
-      case 'd' => (centerX + centerY - x, centerX + centerY - y)
+      case 'd' => (centerX + centerY - y, centerX + centerY - x)
       case _ => (x, y)
     }
   }

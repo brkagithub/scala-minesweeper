@@ -22,7 +22,6 @@ override def apply(board: Board, centerX: Int, centerY: Int, area: Area): Board 
     val newArea = new Area(board, 0, 0, 0, 0)
     newArea.setFields(newAreaFields)
     val newBoard = super.apply(board, -1, -1, newArea)
-
     newBoard
   }
 
