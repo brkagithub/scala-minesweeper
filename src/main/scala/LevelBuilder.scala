@@ -13,6 +13,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
   private val removeFirstColumnButton = new Button("Remove first column")
   private val removeLastColumnButton = new Button("Remove last column")
   private val rotationButton = new Button("Rotation")
+  private val symmetryButton = new Button("Symmetry")
 
   private val (minRows, maxRows, minCols, maxCols) = difficulty match {
     case "Beginner" => (1, 10, 1, 10)
@@ -32,10 +33,12 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     contents += removeLastColumnButton
     contents += saveButton
     contents += rotationButton
+    contents += symmetryButton
   }
 
   listenTo(addFirstRowButton, addLastRowButton, addFirstColumnButton, addLastColumnButton,
-    removeFirstRowButton, removeLastRowButton, removeFirstColumnButton, removeLastColumnButton, saveButton, rotationButton)
+    removeFirstRowButton, removeLastRowButton, removeFirstColumnButton, removeLastColumnButton, saveButton,
+    rotationButton, symmetryButton)
 
 
   reactions += {
@@ -49,6 +52,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     case ButtonClicked(`removeLastColumnButton`) => removeLastColumn()
     case ButtonClicked(`saveButton`) => saveLevel()
     case ButtonClicked(`rotationButton`) => rotation()
+    case ButtonClicked(`symmetryButton`) => symmetry()
   }
 
   private def addFirstRow(): Unit = {
@@ -199,6 +203,18 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     }
 
     board = rotation.apply(board, 2, 3, new Area(board, 1, 0, 2, 4))
+
+    ui.setBoard(board)
+    ui.recreateButtons()
+    ui.updateUI()
+  }
+
+  private def symmetry(): Unit = {
+    val symmetry = new Transparent with Extendable with Symmetry {
+      override def direction: Char = 'd'
+    }
+
+    board = symmetry.apply(board, 0, 3, new Area(board, 2, 3, 3, 4))
 
     ui.setBoard(board)
     ui.recreateButtons()
