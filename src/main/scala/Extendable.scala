@@ -1,6 +1,6 @@
 trait Extendable extends Isometry {
   override def extendable: Boolean = true
-  override def apply(board: Board, centerX: Int, centerY: Int, area: Area): Board = {
+  override def apply(board: Board, centerX: Int, centerY: Int, area: Area): Area = {
     var minX = 0
     var maxX = board.height - 1
     var minY = 0
@@ -16,9 +16,8 @@ trait Extendable extends Isometry {
     val nextArea = area.fields
 
     while (minX < 0) {
-      board.addFirstRow()
+      area.addFirstRow()
       minX += 1
-      maxX += 1
 
       for (i <- nextArea.indices) {
         val (x, y, isMine) = nextArea(i)
@@ -27,9 +26,8 @@ trait Extendable extends Isometry {
     }
 
     while (minY < 0) {
-      board.addFirstColumn()
+      area.addFirstColumn()
       minY += 1
-      maxY += 1
 
       for (i <- nextArea.indices) {
         val (x, y, isMine) = nextArea(i)
@@ -38,11 +36,13 @@ trait Extendable extends Isometry {
     }
 
     while (maxX > board.height - 1) {
-      board.addLastRow()
+      maxX -= 1
+      area.addLastRow()
     }
 
     while (maxY > board.width - 1) {
-      board.addLastColumn()
+      maxY -= 1
+      area.addLastColumn()
     }
 
     super.apply(board, -1, -1, area)

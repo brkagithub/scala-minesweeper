@@ -1,7 +1,7 @@
 trait NonExtendable extends Isometry {
   override def extendable: Boolean = false
 
-  override def apply(board: Board, centerX: Int, centerY: Int, area: Area): Board = {
+  override def apply(board: Board, centerX: Int, centerY: Int, area: Area): Area = {
     val minX = 0
     val maxX = board.height - 1
     val minY = 0

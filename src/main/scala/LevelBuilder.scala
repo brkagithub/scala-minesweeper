@@ -264,30 +264,38 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     val bottomRightX = bottomRightXField.text.toInt
     val bottomRightY = bottomRightYField.text.toInt
 
+    // dummy obj
+    var oldArea: Area = new Area(board, 0, 0, 0, 0)
+    var area: Area = new Area(board, 0, 0, 0, 0)
+
     if (operationType == "Rotation") {
       if (isTransparent) {
         if (isExtendable) {
           val rotation = new Transparent with Extendable with Rotation {
             override def clockwise: Boolean = rotationClockwise
           }
-          board = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+          oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+          area = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         } else {
           val rotation = new Transparent with NonExtendable with Rotation {
             override def clockwise: Boolean = rotationClockwise
           }
-          board = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+          oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+          area = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         }
       } else {
         if (isExtendable) {
           val rotation = new NonTransparent with Extendable with Rotation {
             override def clockwise: Boolean = rotationClockwise
           }
-          board = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+          oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+          area = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         } else {
           val rotation = new NonTransparent with NonExtendable with Rotation {
             override def clockwise: Boolean = rotationClockwise
           }
-          board = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+          oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+          area = rotation.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         }
       }
     } else if (operationType == "Symmetry") {
@@ -296,27 +304,48 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
           val symmetry = new Transparent with Extendable with Symmetry {
             override def direction: Char = symmetryDirection
           }
-          board = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+          oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+          area = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         } else {
           val symmetry = new Transparent with NonExtendable with Symmetry {
             override def direction: Char = symmetryDirection
           }
-          board = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+          oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+          area = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         }
       } else {
         if (isExtendable) {
           val symmetry = new NonTransparent with Extendable with Symmetry {
             override def direction: Char = symmetryDirection
           }
-          board = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+          oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+          area = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         } else {
           val symmetry = new NonTransparent with NonExtendable with Symmetry {
             override def direction: Char = symmetryDirection
           }
-          board = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+          oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+          area = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         }
       }
     }
+
+    oldArea.updateCoordinates(area)
+
+    board = area.updateBoard()
+
+    println("cleaning original fields which are not in image")
+    // clean original which are not in image
+    val areaCoordinates = area.fields.map { case (x, y, _) => (x, y) }.toSet
+
+    oldArea.fields.toArray.foreach { case (x, y, isMine) =>
+      if (!areaCoordinates.contains((x, y))) {
+        board.getGrid(x)(y).setIsMine(false)
+      }
+    }
+
+    board.calculateAdjacentMines()
+
     ui.setBoard(board)
     ui.recreateButtons()
     ui.updateUI()

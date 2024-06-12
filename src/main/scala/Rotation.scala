@@ -7,22 +7,21 @@ trait Rotation extends Isometry {
   //    val newGridWidth = if(extendable) math.max(subGridWidth, subGridHeight) + board.getWidth - subGridWidth else board.getWidth
   //    val newGridHeight = if (extendable) math.max(subGridWidth, subGridHeight) + board.getHeight - subGridHeight else board.getHeight
 
-override def apply(board: Board, centerX: Int, centerY: Int, area: Area): Board = {
+override def apply(board: Board, centerX: Int, centerY: Int, area: Area): Area = {
     val newAreaFields = ArrayBuffer[(Int, Int, Boolean)]() // to save previous state of fields in the area
 
     area.fields.toArray.foreach { case (x, y, isMine) =>
       val isMine = board.getGrid(x)(y).isMine
 
-      board.getGrid(x)(y).setIsMine(false) // clear previous area from mines
+//      board.getGrid(x)(y).setIsMine(false) // clear previous area from mines
       val (newX, newY) = rotatePoint(x, y, centerX, centerY, clockwise) // get rotated coordinates
-
       newAreaFields += ((newX, newY, isMine))
     }
 
     val newArea = new Area(board, 0, 0, 0, 0)
     newArea.setFields(newAreaFields)
-    val newBoard = super.apply(board, -1, -1, newArea)
-    newBoard
+
+    super.apply(board, -1, -1, newArea)
   }
 
   private def rotatePoint(x: Int, y: Int, centerX: Int, centerY: Int, clockwise: Boolean = true): (Int, Int) = {
