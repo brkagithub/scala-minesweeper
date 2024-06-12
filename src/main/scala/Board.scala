@@ -32,7 +32,7 @@ class Board(var width: Int, var height: Int, var numMines: Int, difficulty: Stri
 
   init()
 
-  private def printBoardDebug(): Unit = {
+  def printBoardDebug(): Unit = {
     for (i <- 0 until height) {
       for (j <- 0 until width) {
         print(if (grid(i)(j).isMine) " * " else " " + grid(i)(j).getAdjacentMines.toString + " ")
@@ -45,7 +45,7 @@ class Board(var width: Int, var height: Int, var numMines: Int, difficulty: Stri
   private def init(): Unit = {
     placeMines()
     calculateAdjacentMines()
-    printBoardDebug()
+//    printBoardDebug()
   }
 
   private def placeMines(): Unit = {
@@ -371,5 +371,24 @@ class Board(var width: Int, var height: Int, var numMines: Int, difficulty: Stri
       newGrid(y)(width - 1) = new Cell(isMine = false)
     }
     setGrid(newGrid)
+  }
+
+  def copyBoard(): Board = {
+    val copiedBoard = new Board(width, height, numMines, difficulty, isInteractive)
+    val newGrid = Array.tabulate(height, width)((i, j) => {
+      val cell = grid(i)(j)
+      val newCell = new Cell(cell.isMine)
+      newCell.setAdjacentMines(cell.getAdjacentMines)
+      newCell.revealed = cell.revealed
+      newCell.mark = cell.mark
+      newCell
+    })
+    copiedBoard.setGrid(newGrid)
+    copiedBoard.gameOver = this.gameOver
+    copiedBoard.gameWon = this.gameWon
+    copiedBoard.startTime = this.startTime
+    copiedBoard.elapsedTime = this.elapsedTime
+    copiedBoard.clickCount = this.clickCount
+    copiedBoard
   }
 }

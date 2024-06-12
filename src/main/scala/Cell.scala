@@ -3,9 +3,9 @@
 //import io.circe.parser._
 
 class Cell(var isMine: Boolean) {
-  private var revealed: Boolean = false
-  private var mark: Boolean = false
-  private var adjacentMines: Int = 0
+   var revealed: Boolean = false
+   var mark: Boolean = false
+   var adjacentMines: Int = 0
 
   def reveal(): Unit = {
     revealed = true

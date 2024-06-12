@@ -7,7 +7,8 @@ trait Symmetry extends Isometry {
     val newAreaFields = ArrayBuffer[(Int, Int, Boolean)]()
 
     area.fields.toArray.foreach { case (x, y, isMine) =>
-      val isMine = board.getGrid(x)(y).isMine
+//      val isMine = board.getGrid(x)(y).isMine
+      // UNCOMMENT IF DOESNT WORK
 
 //      board.getGrid(x)(y).setIsMine(false) // clear previous area from mines
       val (newX, newY) = transformPoint(x, y, centerX, centerY, direction) // get rotated coordinates

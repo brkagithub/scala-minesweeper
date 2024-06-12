@@ -15,7 +15,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
 
   private val applyButton = new Button("Apply")
 
-  private val operationTypeComboBox = new ComboBox(Seq("Rotation", "Symmetry"))
+  private val operationTypeComboBox = new ComboBox(Seq("Rotation", "Symmetry", "Custom"))
   private val transparencyComboBox = new ComboBox(Seq("Transparent", "NonTransparent"))
   private val extendabilityComboBox = new ComboBox(Seq("Extendable", "NonExtendable"))
   private val rotationDirectionComboBox = new ComboBox(Seq("Clockwise", "CounterClockwise"))
@@ -38,6 +38,9 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
   }
   private val bottomRightYField = new TextField {
     columns = 5
+  }
+  private val customField = new TextField {
+    columns = 80
   }
 
 
@@ -71,6 +74,10 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     contents += rotationDirectionComboBox
     contents += new Label("Symmetry Direction:")
     contents += symmetryDirectionComboBox
+  }
+
+  contents += new FlowPanel {
+    contents += customField
   }
 
   contents += new FlowPanel {
@@ -328,22 +335,75 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
           area = symmetry.apply(board, centerX, centerY, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
         }
       }
+    } else {
+      // custom
+      // S = symetry, R = rotation
+      // C = clockwise CC = counterclockwise
+      // D = diagonal, H = horizontal, V = vertical
+      // T = transparent, NT = nontransparent
+      // E = extendable, NE = nonextendable
+
+      // R_CC_NE_NT(2,3) -> S_V_E_NT(3,1)
+      val customInput = customField.text
+      val c = new Composition()
+      val (isometryArray, parameterArray) = c.parseCustomInput(customInput)
+
+      val copiedBoard = board.copyBoard()
+      area = new Area(copiedBoard, topLeftX, topLeftY, bottomRightX, bottomRightY)
+
+      val composedIsometry = c.compose(copiedBoard, isometryArray)
+      composedIsometry(area, parameterArray)
+
+      board = copiedBoard
+
+//      c.executeIsometries(copiedBoard, area, isometryArray, parameterArray)
+//      val rotation = new NonTransparent with NonExtendable with Rotation {
+//        override def clockwise: Boolean = false
+//      }
+//      println((topLeftX, topLeftY, bottomRightX, bottomRightY))
+//      oldArea = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+//
+//      area = rotation.apply(board, 2, 3, new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY))
+//
+//      oldArea.updateCoordinates(area)
+//
+//      board = area.updateBoard()
+//
+//      println("cleaning original fields which are not in image")
+//      // clean original which are not in image
+//      val areaCoordinates = area.fields.map { case (x, y, _) => (x, y) }.toSet
+//
+//      oldArea.fields.toArray.foreach { case (x, y, isMine) =>
+//        if (!areaCoordinates.contains((x, y))) {
+//          board.getGrid(x)(y).setIsMine(false)
+//        }
+//      }
+//
+//      val symmetry = new NonTransparent with Extendable with Symmetry {
+//        override def direction: Char = 'v'
+//      }
+//
+//      oldArea = area.copyArea()
+//      val areaCopy = area.copyArea()
+//
+//      area = symmetry.apply(board, 3, 1, areaCopy)
     }
+    if(operationType != "Custom"){
+      // update board once
+      oldArea.updateCoordinates(area)
 
-    oldArea.updateCoordinates(area)
+      board = area.updateBoard()
 
-    board = area.updateBoard()
+      println("cleaning original fields which are not in image")
+      // clean original which are not in image
+      val areaCoordinates = area.fields.map { case (x, y, _) => (x, y) }.toSet
 
-    println("cleaning original fields which are not in image")
-    // clean original which are not in image
-    val areaCoordinates = area.fields.map { case (x, y, _) => (x, y) }.toSet
-
-    oldArea.fields.toArray.foreach { case (x, y, isMine) =>
-      if (!areaCoordinates.contains((x, y))) {
-        board.getGrid(x)(y).setIsMine(false)
+      oldArea.fields.toArray.foreach { case (x, y, isMine) =>
+        if (!areaCoordinates.contains((x, y))) {
+          board.getGrid(x)(y).setIsMine(false)
+        }
       }
     }
-
     board.calculateAdjacentMines()
 
     ui.setBoard(board)

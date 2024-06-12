@@ -1,6 +1,5 @@
 import scala.collection.mutable.ArrayBuffer
-
-class Area(board: Board, topLeftX: Int, topLeftY: Int, bottomRightX: Int, bottomRightY: Int) {
+ class Area(board: Board, topLeftX: Int, topLeftY: Int, bottomRightX: Int, bottomRightY: Int) {
   var fields: ArrayBuffer[(Int, Int, Boolean)] = ArrayBuffer()
   var addedFirstRows: Int = 0
   var addedLastRows: Int = 0
@@ -71,5 +70,21 @@ class Area(board: Board, topLeftX: Int, topLeftY: Int, bottomRightX: Int, bottom
     for (_ <- 0 until area.addedFirstColumns) {
       fields = fields.map { case (x, y, isMine) => (x, y + 1, isMine) }
     }
+  }
+
+  def copyArea(): Area = {
+    val newFields = ArrayBuffer[(Int, Int, Boolean)]()
+    fields.foreach { case (x, y, isMine) =>
+      newFields += ((x, y, isMine))
+    }
+
+    val a = new Area(board, topLeftX, topLeftY, bottomRightX, bottomRightY)
+    a.setFields(newFields)
+    a.addedFirstRows = addedFirstRows
+    a.addedLastRows = addedLastRows
+    a.addedFirstColumns = addedFirstColumns
+    a.addedLastColumns = addedLastColumns
+
+    a
   }
 }
