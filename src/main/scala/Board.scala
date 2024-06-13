@@ -332,6 +332,7 @@ class Board(var width: Int, var height: Int, var numMines: Int, difficulty: Stri
               }
             }
           }
+          checkWinCondition()
         }
       }
     }

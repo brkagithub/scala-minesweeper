@@ -1,6 +1,9 @@
 import scala.swing._
 import scala.swing.event._
+import java.io.{BufferedWriter, FileWriter, IOException}
 import java.io.File
+import scala.io.Source
+import scala.util.matching.Regex
 
 class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: UI) extends BoxPanel(Orientation.Vertical) {
   private val addFirstRowButton = new Button("Add first row")
@@ -13,6 +16,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
   private val removeFirstColumnButton = new Button("Remove first column")
   private val removeLastColumnButton = new Button("Remove last column")
 
+  private val createButton = new Button("Create")
   private val applyButton = new Button("Apply")
 
   private val operationTypeComboBox = new ComboBox(Seq("Rotation", "Symmetry", "Custom"))
@@ -38,6 +42,9 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
   }
   private val bottomRightYField = new TextField {
     columns = 5
+  }
+  private val addCustomIsometryField = new TextField {
+    columns = 80
   }
   private val customField = new TextField {
     columns = 80
@@ -77,6 +84,13 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
   }
 
   contents += new FlowPanel {
+    contents += new Label("Create:")
+    contents += addCustomIsometryField
+    contents += createButton
+  }
+
+  contents += new FlowPanel {
+    contents += new Label("Execute:")
     contents += customField
   }
 
@@ -98,7 +112,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
 
   listenTo(addFirstRowButton, addLastRowButton, addFirstColumnButton, addLastColumnButton,
     removeFirstRowButton, removeLastRowButton, removeFirstColumnButton, removeLastColumnButton, saveButton,
-    applyButton, operationTypeComboBox.selection, transparencyComboBox.selection, extendabilityComboBox.selection,
+    applyButton, createButton, operationTypeComboBox.selection, transparencyComboBox.selection, extendabilityComboBox.selection,
     rotationDirectionComboBox.selection, symmetryDirectionComboBox.selection)
 
 
@@ -113,6 +127,7 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     case ButtonClicked(`removeLastColumnButton`) => removeLastColumn()
     case ButtonClicked(`saveButton`) => saveLevel()
     case ButtonClicked(`applyButton`) => applyOperation()
+    case ButtonClicked(`createButton`) => createIsometry()
   }
 
   private def addFirstRow(): Unit = {
@@ -257,6 +272,27 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     board.saveLevel(filepath)
   }
 
+  private def appendLineToFile(filePath: String, inputText: String): Unit = {
+    var bw: BufferedWriter = null
+    try {
+      bw = new BufferedWriter(new FileWriter(filePath, true))
+      bw.write(inputText)
+      bw.newLine()
+    } catch {
+      case e: IOException => e.printStackTrace()
+    } finally {
+      try {
+        if (bw != null) bw.close()
+      } catch {
+        case e: IOException => e.printStackTrace()
+      }
+    }
+  }
+  private def createIsometry(): Unit = {
+    val filePath = "./temp/isometries.txt"
+    val inputText = addCustomIsometryField.text
+    appendLineToFile(filePath, inputText)
+  }
   private def applyOperation(): Unit = {
     val isTransparent = transparencyComboBox.selection.item == "Transparent"
     val isExtendable = extendabilityComboBox.selection.item == "Extendable"
@@ -344,7 +380,13 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
       // E = extendable, NE = nonextendable
 
       // R_CC_NE_NT(2,3) -> S_V_E_NT(3,1)
-      val customInput = customField.text
+      val customCall = customField.text
+      // centerX, centerY
+
+      val isometries = readIsometries("./temp/isometries.txt")
+      val customInput = getIsometryString(customCall, centerX, centerY, isometries)
+      println(customInput)
+//      val customInput = customField.text
       val c = new Composition()
       val (isometryArray, parameterArray) = c.parseCustomInput(customInput)
 
@@ -409,5 +451,28 @@ class LevelBuilder(var board: Board, difficulty: String, filepath: String, ui: U
     ui.setBoard(board)
     ui.recreateButtons()
     ui.updateUI()
+  }
+
+  private def readIsometries(filePath: String): Map[String, String] = {
+    val source = Source.fromFile(filePath)
+    val isometries = source.getLines().collect {
+      case line if line.contains("=") =>
+        val parts = line.split("=").map(_.trim)
+        parts(0).split("\\(")(0) -> parts(1)
+    }.toMap
+    source.close()
+    isometries
+  }
+
+  private def getIsometryString(input: String, centerX: Int, centerY: Int, isometries: Map[String, String]): String = {
+    val pattern: Regex = """([A-Za-z0-9_]+)\(([^)]+)\)""".r
+
+    input match {
+      case pattern(name, _) if isometries.contains(name) =>
+        val isometryTemplate = isometries(name)
+        val result = isometryTemplate.replaceAllLiterally("x", centerX.toString).replaceAllLiterally("y", centerY.toString)
+        result
+      case _ => "Isometry not found"
+    }
   }
 }
